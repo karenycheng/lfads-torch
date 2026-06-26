@@ -14,7 +14,7 @@ It's a variational autoencoder. On each trial it:
 
 ## What it actually outputs (from `tuples.py` + eval notebook)
 
-After training you get, **per trial**:
+After training you get, **per trial**:                                                                                                                                                   
 
 | Output | Shape | What it is |
 |---|---|---|

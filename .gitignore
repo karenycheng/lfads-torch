@@ -4,21 +4,8 @@ datasets
 tutorials/multisession/lfads-output
 .DS_Store
 
-# Run outputs - large files
-runs/**/*.h5
-
-# Run intermediate outputs
-runs/**/events.out.tfevents.*
-runs/**/lightning_checkpoints/
-runs/**/csv_logs/
-runs/**/params.json
-runs/**/params.pkl
-runs/**/result.json
-runs/**/progress.csv
-runs/**/error.pkl
-runs/**/error.txt
-runs/**/*-variant-state-*.json
-runs/**/experiment_state-*.json
+# All training run outputs (large, ephemeral, machine-specific)
+runs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

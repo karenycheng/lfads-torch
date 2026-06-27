@@ -17,9 +17,24 @@ from lfads_torch.run_model import run_model
 
 # ---------- OPTIONS ----------
 PROJECT_STR = "pbt"
-DATASET_STR = "rouse_multisession"
+# Train on the z-scored ΔF/F data (recommended; per-region z-score before PCA).
+# To train on the unscaled data instead, set DATASET_STR = "kcEXP00H_multisession".
+DATASET_STR = "kcEXP00H_multisession_zscored"
+# The model config is dataset-agnostic: its readin/readout/reconstruction read
+# ${datamodule.datafile_pattern}, so the same PCR model config works for either
+# datamodule. Keep it decoupled from DATASET_STR.
+MODEL_STR = "kcEXP00H_multisession_PCR"
 RUN_TAG = datetime.now().strftime("%y%m%d")
-RUN_DIR = Path("/home/kyc_hpz8/Documents/lfads-torch/runs/rouse_multisession_202606271354/") / PROJECT_STR / DATASET_STR / RUN_TAG
+# Fresh, timestamped run directory every launch. We deliberately do NOT use
+# resume=True: if a previous run was killed while every trial was PAUSED,
+# resuming restores them all as PAUSED and nothing ever unpauses (deadlock).
+RUN_DIR = (
+    Path("/home/kyc_hpz8/Documents/lfads-torch/runs")
+    / f"kcEXP00H_multisession_{datetime.now().strftime('%Y%m%d%H%M')}"
+    / PROJECT_STR
+    / DATASET_STR
+    / RUN_TAG
+)
 HYPERPARAM_SPACE = {
     "model.lr_init": HyperParam(
         1e-4, 1e-3, explore_wt=0.3, enforce_limits=True, init=1e-3
@@ -47,7 +62,7 @@ init_space = {name: tune.sample_from(hp.init) for name, hp in HYPERPARAM_SPACE.i
 # Set the mandatory config overrides to select datamodule and model
 mandatory_overrides = {
     "datamodule": DATASET_STR,
-    "model": DATASET_STR + "_PCR",
+    "model": MODEL_STR,
     # "logger.wandb_logger.project": PROJECT_STR,
     # "logger.wandb_logger.tags.1": DATASET_STR,
     # "logger.wandb_logger.tags.2": RUN_TAG,

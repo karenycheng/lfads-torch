@@ -1,0 +1,4 @@
+_target_: lfads_torch.datamodules.BasicDataModule
+datafile_pattern: ${relpath:datasets/kcEXP00H_multisession_zscored/lfads_*.h5}
+# Only ~14 training trials per fly, so a small batch is plenty.
+batch_size: 200

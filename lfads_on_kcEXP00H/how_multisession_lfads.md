@@ -151,3 +151,24 @@ Both trials pass through the **exact same encoder, generator, and factor layer w
 - **LFADS architecture** (Steps 1–5): Pandarinath et al. 2018, *Nature Methods*
 - **Readin / readout layers and multi-session extension**: Keshtkaran et al. 2022, *Nature Methods*; Sedler & Pandarinath 2023, arXiv
 - **Code implementation**: `lfads_torch/modules/readin_readout.py` — `MultisessionReadin` and `MultisessionReadout`
+
+---
+
+## Is this autoLFADS? Is this RADICaL?
+
+### autoLFADS — yes
+
+autoLFADS (Keshtkaran et al. 2022, *Nature Methods*) contributes two things:
+
+1. The **multi-session architecture** with PCR-initialized readin/readout layers — described throughout this document, fully implemented in `lfads_torch/modules/readin_readout.py`
+2. **Automated hyperparameter optimization** via Population-Based Training (PBT) with Ray Tune — fully implemented in `lfads_torch/extensions/tune.py` (`BinaryTournamentPBT`, used by `scripts/run_pbt.py`)
+
+The kcEXP00H data preparation notebooks produce exactly the HDF5 format autoLFADS expects (per-fly files with `readin_weight` and `readout_bias` matrices from PCR). When you run `run_pbt.py` with these files, you are running autoLFADS.
+
+### RADICaL — no
+
+RADICaL (Zhu et al. 2022, *Nature Neuroscience*) is a multimodal LFADS that **jointly models two recording modalities** — e.g., calcium imaging supervised by simultaneously recorded spikes, or LFP supervised by multi-unit activity. The high-SNR modality provides a reconstruction target that guides the latent representation beyond what the low-SNR modality alone could achieve.
+
+This requires: dual encoders (one per modality), a cross-modal reconstruction loss, and paired multi-modal recordings. None of these are implemented here, and kcEXP00H has only calcium imaging — so RADICaL is not applicable.
+
+What this repo *does* borrow from Zhu et al. papers are **augmentation techniques** (Coordinated Dropout, Selective Backprop Through Time) in `lfads_torch/modules/augmentations.py`. These are general-purpose tricks for LFADS training, not the RADICaL architecture.

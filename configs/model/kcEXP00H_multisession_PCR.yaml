@@ -4,7 +4,7 @@ _target_: lfads_torch.model.LFADS
 # encod_data_dim is the readin OUTPUT dim (shared PC space), not the region count.
 # With pcr_init the per-fly readin maps 75 regions -> 50 PCs, so this stays 50.
 encod_data_dim: 50
-encod_seq_len: 175  # kcEXP00H window = PRE_FRAMES(25) + POST_FRAMES(150)
+encod_seq_len: 1050  # kcEXP00H FULL trial (was 175 = odor-only window; full trial captures walk/vision responses)
 recon_seq_len: ${model.encod_seq_len}
 ext_input_dim: 0
 ic_enc_seq_len: 0

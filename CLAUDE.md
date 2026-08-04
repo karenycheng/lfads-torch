@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Response preferences
+
+Keep responses and code as simple as possible. Do only what is asked — don't add extra features, options, error handling, or abstractions beyond the request.
+
 ## Setup
 
 ```bash

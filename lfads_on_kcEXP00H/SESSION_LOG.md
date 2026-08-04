@@ -377,3 +377,78 @@ Infra: installed `nbconvert` + `nibabel` in `lfads-torch` env; JFRC mask project
 **Next:** rebuild Figs 9 & 10 on the factorial/response basis (Fig 9 = regions with ≥2 main effects or
 interactions; Fig 10 = per-fly reliability of the O/F/O×F contrasts). Optional: vector/PDF export of
 brain projections; split Fig 7.1 window into vision vs odor epochs.
+
+---
+
+## Session: 2026-07-16 — `1.2_data_prep_KC.ipynb` (KC-edited rewrite of `1-1`)
+
+**Goal:** Karen re-coded the data-prep pipeline herself (minimal AI help) to understand the array
+access and computations, producing a cleaned-up version of `1-1_data_prep_w_zscore_kcEXP00H.ipynb`.
+
+`1.2_data_prep_KC.ipynb` **is the cleaned-up, KC-edited version of `1-1`** — same load → NaN handling
+→ z-score → condition means → global PCA → per-fly PCR → save-h5 flow, with these deliberate changes:
+
+- **Baseline trials dropped:** `baseline_trials = [0, 9]` removed up front (16 trials/fly, vs `1-1`
+  which kept all 18). Matches `EXCLUDE_BASELINE` in `4_decode`.
+- **Explicit region skip-list:** `regions_to_skip = ['AME-R','AME-L','LO-R','LO-L','MED-R','MED-L',
+  'LOP-L','LOP-R']` (the optic-lobe artifact neuropils from `5_region_contributions`) dropped for all
+  flies, **then** a per-fly always-NaN drop on top — which catches **PRW being fully-NaN in H36006-007
+  only** (→ 66 regions for that fly, 67 for the other four). Confirms `1-1`'s per-fly region-count
+  design; multisession read-in absorbs the mismatch.
+- **Z-score order changed:** stats computed from the **single-trial** data (flatten trials×time) and
+  applied to both trials and condition means — vs `1-1` which computed z-score stats from the
+  condition-mean matrix. More principled; slightly different std (includes trial-to-trial variance).
+- **NaN check is richer:** per-fly fully/partial-NaN region lists + per-trial NaN frame ranges with a
+  contiguity flag.
+- **Output dir:** `../datasets/kcEXP00H_multisession_KC` (does **not** clobber `1-1`'s `_zscored` set).
+  h5 keys identical to `1-1` Step 9 (`{train,valid}_{encod,recon}_data`, inds, `readin_weight`,
+  `readout_bias`, `zscore_mean/std`). Split 12 train / 4 valid (every 5th of the 16 trials).
+
+Also added a **Response preferences** section to `lfads-torch/CLAUDE.md`: keep responses/code as
+simple as possible, nothing beyond what's asked.
+
+Later (still 2026-07-16): added the **training-prep tail** to `1.2` mirroring `1-1` — concatenate
+`psths_z` across flies → global PCA → per-fly PCR (`weights`/`biases`, and `latents`) → save h5. Plus
+**global PC trajectory** and **section-8 per-fly PCR trajectory** viz cells. New datamodule config
+`configs/datamodule/kcEXP00H_multisession_KC1pt2.yaml` (points at
+`datasets/kcEXP00H_multisession_KC1pt2/lfads_*.h5`, `batch_size: 60` — 12 train trials × 5 sessions,
+`drop_last` gotcha, see [[lfads-pbt-batchsize-droplast-gotcha]]). Model config reused as-is
+(`kcEXP00H_multisession_PCR`, dataset-agnostic, `encod_seq_len: 1050`, MSE). NOTE: the actual saved
+output dir in the notebook is `kcEXP00H_multisession_KC1pt2` (the config matches this), not the
+`_KC` mentioned above.
+
+---
+
+## Session: 2026-07-17 — KC1pt2 PBT run: end-of-run segfault, recovery, 16-trial eval
+
+**Trained** the KC1pt2 (1.2) dataset via `2_run_pbt_kcEXP00H.py` (`DATASET_STR =
+"kcEXP00H_multisession_KC1pt2"`). Run: `runs/kcEXP00H_multisession_202607161710/pbt/
+kcEXP00H_multisession_KC1pt2/260716/`.
+
+**Segfault at end of run (diagnosed, fixed).** Training completed fine (19423 s, all 20 trials
+TERMINATED, best `valid/recon_smth = 0.193` at trial 00018), but the process **SIGSEGV'd after
+`tune.run`** before `best_model/` + posterior sampling — traceback ended in
+`ExperimentAnalysis → fetch_trial_dataframes → pandas read_csv (c_parser)`. Root cause: **pandas
+2.3.3** in the `lfads-torch` env segfaults reading trial 00016's `progress.csv` during Ray's
+end-of-run aggregation (data-dependent; both C and python engines crash; base-env pandas 2.2.2 reads
+the same file fine). **Fix: pinned pandas to 2.2.2** in the env
+(`~/anaconda3/envs/lfads-torch/bin/python -m pip install 'pandas==2.2.2'`); verified all 20 CSVs then
+read cleanly. Env: py3.9, ray 2.1.0, numpy 1.26.4, torch 1.13.1+cu117. (`conda activate` doesn't
+stick in non-interactive bash — use the env's absolute python path.) See
+[[lfads-pbt-endofrun-pandas-segfault]].
+
+**Recovered without retraining.** Wrote `runs/.../260716/recover_posterior_sampling.py`: restore the
+finished experiment via `tune.ExperimentAnalysis(experiment_state_json, default_metric, default_mode)`
+(needs `ray.init(include_dashboard=False, ignore_reinit_error=True)` first, else "Ray has not been
+started yet" deserializing checkpoint ObjectRefs), `copytree(best_logdir → best_model)`, then
+`run_model(overrides={datamodule,model}, checkpoint_dir=best_ckpt, config_path="../configs/pbt.yaml",
+do_train=False)`. Posterior sampling ran ~1 session/min; produced all 5
+`best_model/lfads_output_lfads_*.h5` with `train_factors (12, 1050, 50)` (best trial 00018,
+checkpoint epoch 873).
+
+**`3.1_evaluate_kcEXP00H_16trials.ipynb`** (copy of `3_evaluate`, does NOT overwrite it). `H5_DIR`
+points at the KC1pt2 `best_model`. Fixed the condition-matching cell: `match_conditions(fly, nt)` now
+drops `BASELINE_TRIALS = [0, 9]` from the 18-length `.nc` condition array when the h5 has 2 fewer
+trials (1.2 data), realigning to the 16-trial `truth`. Verified `is_baseline` is exactly at `[0, 9]`
+for all 5 flies → drop yields balanced 8 conds × 2 trials. `1-1` runs (18 trials) are unaffected
+(only drops when counts differ by exactly 2).

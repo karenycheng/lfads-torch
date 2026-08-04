@@ -1,0 +1,9 @@
+_target_: lfads_torch.datamodules.BasicDataModule
+datafile_pattern: ${relpath:datasets/kcEXP00H_multisession_KC1pt2/lfads_*.h5}
+# From 1.2_data_prep_KC.ipynb: baseline trials (0, 9) dropped -> 12 train / 4 valid
+# per fly across 5 sessions. BasicDataModule divides batch_size by n_sessions (=5)
+# for the per-session DataLoader, and the train loader uses drop_last=True -- so the
+# per-session batch (batch_size/5) must be <= 12 train trials or the only batch is
+# dropped and training silently does nothing. 60/5 = 12 keeps one full batch per
+# session (all train trials).
+batch_size: 60

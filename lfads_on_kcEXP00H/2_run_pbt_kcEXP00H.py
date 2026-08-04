@@ -19,7 +19,8 @@ from lfads_torch.run_model import run_model
 PROJECT_STR = "pbt"
 # Train on the z-scored ΔF/F data (recommended; per-region z-score before PCA).
 # To train on the unscaled data instead, set DATASET_STR = "kcEXP00H_multisession".
-DATASET_STR = "kcEXP00H_multisession_zscored"
+# DATASET_STR = "kcEXP00H_multisession_zscored"
+DATASET_STR = "kcEXP00H_multisession_KC1pt2"
 # The model config is dataset-agnostic: its readin/readout/reconstruction read
 # ${datamodule.datafile_pattern}, so the same PCR model config works for either
 # datamodule. Keep it decoupled from DATASET_STR.
